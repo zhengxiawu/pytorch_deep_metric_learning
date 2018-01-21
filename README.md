@@ -1,5 +1,7 @@
 # Deep Metric Learning
 
+## modefied from github.com/bnuwangxun/Deep_Metric
+
 ### Learn a deep metric which can be used image retrieval , clustering.
 ============================
 
