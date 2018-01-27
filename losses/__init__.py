@@ -15,6 +15,7 @@ __factory = {
     'neighbour': NeighbourLoss,
     'distance_match': DistanceMatchLoss,
     'neighard': NeighbourHardLoss,
+    'softmax':'',
 }
 
 

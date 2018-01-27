@@ -5,7 +5,6 @@ from .BN_Inception import BNInception
 __factory = {
     'bn': BNInception,
     'inception': inception_v3,
-
 }
 
 

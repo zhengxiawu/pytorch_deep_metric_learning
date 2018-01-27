@@ -25,10 +25,10 @@ class CUB200:
                 ])]
 
         if root is None:
-            root = 'DataSet/CUB_200_2011'
+            root = '/home/zhengxiawu/data/CUB_200_2011/'
 
-        traindir = os.path.join(root, 'train')
-        testdir = os.path.join(root, 'test')
+        traindir = os.path.join(root, 'train_images')
+        testdir = os.path.join(root, 'test_images')
         if train:
             self.train = datasets.ImageFolder(traindir, transform[0])
         if test:

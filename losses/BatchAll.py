@@ -32,7 +32,6 @@ class BatchAllLoss(nn.Module):
         pos_mask = targets.expand(n, n).eq(targets.expand(n, n).t())
         neg_mask = eyes_.eq(eyes_) - pos_mask
         pos_mask = pos_mask - eyes_.eq(1)
-
         pos_dist = torch.masked_select(dist_mat, pos_mask)
         neg_dist = torch.masked_select(dist_mat, neg_mask)
 
@@ -84,7 +83,7 @@ def main():
     # y_ = np.random.randint(num_class, size=data_size)
     y_ = 8*list(range(num_class))
     targets = Variable(torch.IntTensor(y_))
-
+    inputs = inputs.cuda()
     print(BatchAllLoss(margin=0.2)(inputs, targets))
 
 

@@ -7,6 +7,7 @@ import torch.utils.data
 from torch.backends import cudnn
 import torch.optim as optim
 from torch.autograd import Variable
+from tensorboardX import SummaryWriter
 import models
 import losses
 from utils import RandomIdentitySampler, mkdir_if_missing, logging
@@ -32,7 +33,7 @@ parser.add_argument('-BatchSize', '-b', default=128, type=int, metavar='N',
                     help='mini-batch size (1 = pure stochastic) Default: 256')
 parser.add_argument('-num_instances', default=4, type=int, metavar='n',
                     help='the number of samples from one class in mini-batch')
-parser.add_argument('--embedding_dimension', '-dim', default=512, type=int, metavar='n',
+parser.add_argument('-dim', default=512, type=int, metavar='n',
                     help='the dimension of embedding space')
 
 parser.add_argument('-epochs', '-epochs', default=100, type=int, metavar='N',
@@ -88,6 +89,7 @@ else:
     model.load_state_dict(model_dict)
     # os.mkdir(log_dir)
     # torch.save(model, os.path.join(log_dir, 'model.pkl'))
+#visualize the network
 
 model = model.cuda()
 
@@ -140,7 +142,6 @@ for epoch in range(args.start, args.epochs):
 
         # forward + backward + optimize
         embed_feat = model(inputs)
-
         # loss = criterion(embed_feat, labels)
         loss, inter_, dist_ap, dist_an = criterion(embed_feat, labels)
 
