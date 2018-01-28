@@ -97,6 +97,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.global_avg_pool =nn.AvgPool2d()
         self.avgpool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -125,7 +126,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def extract_conv_feature(self,x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -135,7 +136,9 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-
+        return x
+    def forward(self, x):
+        x = self.extract_conv_feature(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         # feature norm

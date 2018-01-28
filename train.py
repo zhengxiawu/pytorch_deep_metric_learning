@@ -39,7 +39,7 @@ parser.add_argument('-dim', default=512, type=int, metavar='n',
 parser.add_argument('-epochs', '-epochs', default=100, type=int, metavar='N',
                     help='epochs for training process')
 parser.add_argument('-step', '-s', default=200, type=int, metavar='N',
-                    help='number of epochs to save model')
+                    help='number of epochs to adjust learning rate')
 parser.add_argument('-save_step', default=40, type=int, metavar='N',
                     help='number of epochs to save model')
 # optimizer
