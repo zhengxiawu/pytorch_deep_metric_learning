@@ -18,7 +18,7 @@ import models
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
+                    help='data_name')
 parser.add_argument('--arch', '-a', default='resnet50',help='chose a network')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
@@ -50,7 +50,13 @@ parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
 
 best_prec1 = 0
-
+def data_info(data_name):
+    if data_name == 'cub':
+        root_dir = '/home/zhengxiawu/data/CUB_200_2011'
+        train_folder = os.path.join(root_dir,'train_images')
+        test_folder = os.path.join(root_dir,'test_images')
+        num_class = 100
+        return train_folder,test_folder,num_class
 
 def main():
     global args, best_prec1
@@ -61,14 +67,14 @@ def main():
     if args.distributed:
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size)
-
+    train_folder, test_folder, num_class = data_info(args.data)
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
+        model = models.create(args.arch,num_class = num_class)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+        model = models.create(args.arch, num_class=num_class)
 
     if not args.distributed:
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):

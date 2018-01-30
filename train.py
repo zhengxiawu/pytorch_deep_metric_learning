@@ -3,23 +3,25 @@ from __future__ import absolute_import, print_function
 import argparse
 import os
 import sys
+import models
+import time
+import losses
 import torch.utils.data
-from torch.backends import cudnn
 import torch.optim as optim
+from torch.backends import cudnn
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-import models
-import losses
+import torchvision.transforms as transforms
 from utils import RandomIdentitySampler, mkdir_if_missing, logging
 import DataSet
 cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='PyTorch Training')
-parser.add_argument('-data', default='car', required=True,
-                    help='path to dataset')
+parser.add_argument('-data', default='cub', required=True,
+                    help='data_name')
 parser.add_argument('-loss', default='gaussian', required=True,
                     help='path to dataset')
-parser.add_argument('-net', default='bn',
+parser.add_argument('-net', default='resnet_50',
                     help='network used')
 parser.add_argument('-r', default=None,
                     help='the path of the pre-trained model')
@@ -29,7 +31,7 @@ parser.add_argument('-start', default=0, type=int,
 parser.add_argument('-log_dir', default=None,
                     help='where the trained models save')
 
-parser.add_argument('-BatchSize', '-b', default=128, type=int, metavar='N',
+parser.add_argument('-BatchSize', '-b', default=64, type=int, metavar='N',
                     help='mini-batch size (1 = pure stochastic) Default: 256')
 parser.add_argument('-num_instances', default=4, type=int, metavar='n',
                     help='the number of samples from one class in mini-batch')
@@ -51,6 +53,48 @@ parser.add_argument('--nThreads', '-j', default=4, type=int, metavar='N',
 parser.add_argument('--momentum', type=float, default=0.9)
 parser.add_argument('--weight-decay', type=float, default=5e-4)
 
+def accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    temp = target.view(1, -1).expand_as(pred)
+    temp = temp.cuda()
+    correct = pred.eq(temp)
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+
+def data_info(data_name):
+    if data_name == 'cub':
+        root_dir = '/home/zhengxiawu/data/CUB_200_2011'
+        train_folder = os.path.join(root_dir,'train_images')
+        test_folder = os.path.join(root_dir,'test_images')
+        num_class = 100
+        return train_folder,test_folder,num_class
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
 args = parser.parse_args()
 
 if args.log_dir is None:
@@ -60,7 +104,7 @@ else:
 mkdir_if_missing(log_dir)
 # write log
 sys.stdout = logging.Logger(os.path.join(log_dir, 'log.txt'))
-
+train_folder,test_folder,num_class = data_info(args.data)
 #  display information of current training
 print('train on dataset %s' % args.data)
 print('batchsize is: %d' % args.BatchSize)
@@ -68,27 +112,13 @@ print('num_instance is %d' % args.num_instances)
 print('dimension of the embedding space is %d' % args.dim)
 print('log dir is: %s' % args.log_dir)
 
-#  load pretrained models
+#  load fine-tuned models
 if args.r is not None:
     model = torch.load(args.r)
 else:
-    model = models.create(args.net, Embed_dim=args.dim)
-
-    # load part of the model
-    model_dict = model.state_dict()
-    # print(model_dict)
-
-    if args.net == 'bn':
-        pretrained_dict = torch.load('pretrained_models/bn_inception-239d2248.pth')
-    else:
-        pretrained_dict = torch.load('pretrained_models/inception_v3_google-1a9a5a14.pth')
-
-    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-
-    model_dict.update(pretrained_dict)
-    model.load_state_dict(model_dict)
-    # os.mkdir(log_dir)
-    # torch.save(model, os.path.join(log_dir, 'model.pkl'))
+    model = models.create(args.net, Embed_dim=args.dim,
+                          num_class = num_class,
+                          pretrain = True)
 #visualize the network
 
 model = model.cuda()
@@ -96,21 +126,25 @@ model = model.cuda()
 criterion = losses.create(args.loss).cuda()
 
 # fine tune the model: the learning rate for pretrained parameter is 1/10
-base_param_ids = set(map(id, model.Embed.parameters()))
+# base_param_ids = set(map(id, model.Embed.parameters()))
+#
+# base_params = [p for p in model.parameters() if
+#                id(p) in base_param_ids]
+#
+# new_params = [p for p in model.parameters() if
+#               id(p) not in base_param_ids]
+# param_groups = [
+#             {'params': base_params, 'lr_mult': 0.1},
+#             {'params': new_params, 'lr_mult': 1.0}]
 
-base_params = [p for p in model.parameters() if
-               id(p) in base_param_ids]
-
-new_params = [p for p in model.parameters() if
-              id(p) not in base_param_ids]
-param_groups = [
-            {'params': base_params, 'lr_mult': 0.1},
-            {'params': new_params, 'lr_mult': 1.0}]
-
+param_groups = model.parameters()
 learn_rate = args.lr
 optimizer = optim.Adam(param_groups, lr=learn_rate,
                        weight_decay=args.weight_decay)
 
+#get train_loader
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 data = DataSet.create(args.data, root=None, test=False)
 train_loader = torch.utils.data.DataLoader(
     data.train, batch_size=args.BatchSize,
@@ -126,6 +160,16 @@ def adjust_learning_rate(opt_, epoch_, num_epochs):
         for param_group in opt_.param_groups:
             param_group['lr'] = lr
 
+#before we need prepare something...
+
+batch_time = AverageMeter()
+data_time = AverageMeter()
+losses = AverageMeter()
+top1 = AverageMeter()
+top5 = AverageMeter()
+
+end = time.time()
+model.train()
 for epoch in range(args.start, args.epochs):
     adjust_learning_rate(optimizer, epoch, args.epochs)
     running_loss = 0.0
@@ -134,23 +178,42 @@ for epoch in range(args.start, args.epochs):
         inputs, labels = data
         # break
         # wrap them in Variable
-        inputs = Variable(inputs.cuda())
-        labels = Variable(labels).cuda()
+        # inputs_var = Variable(inputs.cuda())
+        # labels_var = Variable(labels).cuda()
 
+        inputs_var = torch.autograd.Variable(inputs).cuda()
+        labels_var = torch.autograd.Variable(labels).cuda()
         # zero the parameter gradients
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        embed_feat = model(inputs)
+        embed_feat = model(inputs_var,scda=False,pool_type = 'max_avg',
+                           is_train = True,scale = 128)
         # loss = criterion(embed_feat, labels)
-        loss, inter_, dist_ap, dist_an = criterion(embed_feat, labels)
+        if args.loss == 'softmax':
+            loss = criterion(embed_feat, labels_var)
+            prec1, prec5 = accuracy(embed_feat.data, labels, topk=(1, 5))
+            losses.update(loss.data[0], input.size(0))
+            top1.update(prec1[0], input.size(0))
+            top5.update(prec5[0], input.size(0))
+        else:
+            loss, inter_, dist_ap, dist_an = criterion(embed_feat, labels)
+            print('[epoch %05d]\t loss: %.7f \t prec: %.3f \t pos-dist: %.3f \tneg-dist: %.3f'
+                  % (epoch + 1, running_loss, inter_, dist_ap, dist_an))
 
         loss.backward()
         optimizer.step()
-        running_loss += loss.data[0]
+        if i % 10 == 0:
+            print('Epoch: [{0}][{1}/{2}]\t'
+                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                  'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                epoch, i, len(train_loader), batch_time=batch_time,
+                data_time=data_time, loss=losses, top1=top1, top5=top5))
     # print(epoch)
-    print('[epoch %05d]\t loss: %.7f \t prec: %.3f \t pos-dist: %.3f \tneg-dist: %.3f'
-          % (epoch + 1,  running_loss, inter_, dist_ap, dist_an))
+
     if (epoch + 1) % args.save_step == 0:
         torch.save(model, os.path.join(log_dir, '%d_model.pkl' % epoch))
 

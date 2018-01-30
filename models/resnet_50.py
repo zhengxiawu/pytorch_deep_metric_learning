@@ -71,7 +71,7 @@ class ResNet(nn.Module):
         self.avg_pool = nn.AvgPool2d(7, stride=1)
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.global_max_pool = nn.AdaptiveMaxPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_class)
+        self.class_fc = nn.Linear(512 * block.expansion * 2, num_class)
 
 
         for m in self.modules():
@@ -135,18 +135,19 @@ class ResNet(nn.Module):
         x = x * kwargs['scale']
         # the last fc layer can be treat as distance compute
         if kwargs['is_train']:
-            x = self.fc(x)
+            print x.size()
+            x = self.class_fc(x)
 
         return x
 
-def resnet50(pretrained=True, num_class=100):
+def resnet_50(**kwargs):
     """Constructs a ResNet-50 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], num_class)
-    if pretrained:
+    model = ResNet(Bottleneck, [3, 4, 6, 3], kwargs['num_class'])
+    if kwargs['pretrain']:
         pretrained_dict = torch.load(model_urls['resnet50'])
         model_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
