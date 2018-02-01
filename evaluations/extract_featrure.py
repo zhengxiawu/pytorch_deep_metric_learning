@@ -24,7 +24,8 @@ def extract_features(model, data_loader, print_freq=1, metric=None):
     for i, (imgs, pids) in enumerate(data_loader):
         data_time.update(time.time() - end)
         # print(imgs.size())
-        outputs = extract_cnn_feature(model, imgs)
+        outputs = model(imgs)
+        #outputs = extract_cnn_feature(model, imgs)
         # print(outputs.size())
         for output, pid in zip(outputs, pids):
             features.append(output)

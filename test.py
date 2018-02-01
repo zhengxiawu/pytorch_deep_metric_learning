@@ -6,13 +6,14 @@ import torch
 from torch.backends import cudnn
 from evaluations import extract_features, pairwise_similarity
 from evaluations import Recall_at_ks, NMI, Recall_at_ks_products
+import torchvision.transforms as transforms
 import DataSet
 
 cudnn.benchmark = True
 parser = argparse.ArgumentParser(description='PyTorch Testing')
 
-parser.add_argument('-data', type=str, default='car')
-parser.add_argument('-r', type=str, default='model.pkl', metavar='PATH')
+parser.add_argument('-data', type=str, default='cub')
+parser.add_argument('-r', type=str, default='model.pth', metavar='PATH')
 
 parser.add_argument('-test', type=int, default=1, help='evaluation on test set or train set')
 
@@ -22,7 +23,14 @@ cudnn.benchmark = True
 # model = inception_v3(dropout=0.5)
 model = torch.load(args.r)
 model = model.cuda()
-
+#define the data load
+transform = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225]),
+                ])
 if args.test == 1:
     print('evaluation on test set of %s with model: %s' %(args.data, args.r))
     data = DataSet.create(args.data, train=False)

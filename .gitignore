@@ -2,5 +2,6 @@
 checkpoints/
 pretrained_models/
 runs/
+data_txt/
 #python
 *.pyc

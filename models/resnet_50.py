@@ -122,7 +122,7 @@ class ResNet(nn.Module):
             mean_x = torch.mean(scda_x.view(scda_x.size(0),-1),1,True)
             scda_x = scda_x - mean_x
             scda_x = scda_x>0
-            scda_x.float()
+            scda_x = scda_x.float()
             x = x * scda_x
         if kwargs['pool_type'] == 'max_avg':
             avg_x = self.global_avg_pool(x)
@@ -135,7 +135,6 @@ class ResNet(nn.Module):
         x = x * kwargs['scale']
         # the last fc layer can be treat as distance compute
         if kwargs['is_train']:
-            print x.size()
             x = self.class_fc(x)
 
         return x

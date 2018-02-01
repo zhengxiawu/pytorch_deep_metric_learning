@@ -9,15 +9,15 @@ class CUB200:
         if transform is None:
 
             transform = [transforms.Compose([
-                transforms.Scale(256),
-                transforms.RandomSizedCrop(224),
+                transforms.Resize(256),
+                transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225]),
             ]),
                 transforms.Compose([
-                    transforms.Scale(256),
+                    transforms.Resize(256),
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=[0.485, 0.456, 0.406],

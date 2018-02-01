@@ -33,25 +33,27 @@ parser.add_argument('-log_dir', default=None,
 
 parser.add_argument('-BatchSize', '-b', default=64, type=int, metavar='N',
                     help='mini-batch size (1 = pure stochastic) Default: 256')
-parser.add_argument('-num_instances', default=4, type=int, metavar='n',
+parser.add_argument('-num_instances', default=16, type=int, metavar='n',
                     help='the number of samples from one class in mini-batch')
 parser.add_argument('-dim', default=512, type=int, metavar='n',
                     help='the dimension of embedding space')
 
 parser.add_argument('-epochs', '-epochs', default=100, type=int, metavar='N',
                     help='epochs for training process')
-parser.add_argument('-step', '-s', default=200, type=int, metavar='N',
+parser.add_argument('-step', '-s', default=1000, type=int, metavar='N',
                     help='number of epochs to adjust learning rate')
-parser.add_argument('-save_step', default=40, type=int, metavar='N',
+parser.add_argument('-save_step', default=20, type=int, metavar='N',
                     help='number of epochs to save model')
+parser.add_argument('--print-freq', '-p', default=5, type=int,
+                    metavar='N', help='print frequency (default: 10)')
 # optimizer
-parser.add_argument('-lr', type=float, default=1e-4,
+parser.add_argument('-lr', type=float, default=1e-2,
                     help="learning rate of new parameters, for pretrained "
                          "parameters it is 10 times smaller than this")
 parser.add_argument('--nThreads', '-j', default=4, type=int, metavar='N',
                     help='number of data loading threads (default: 2)')
 parser.add_argument('--momentum', type=float, default=0.9)
-parser.add_argument('--weight-decay', type=float, default=5e-4)
+parser.add_argument('--weight-decay', type=float, default=5e-5)
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -125,18 +127,6 @@ model = model.cuda()
 
 criterion = losses.create(args.loss).cuda()
 
-# fine tune the model: the learning rate for pretrained parameter is 1/10
-# base_param_ids = set(map(id, model.Embed.parameters()))
-#
-# base_params = [p for p in model.parameters() if
-#                id(p) in base_param_ids]
-#
-# new_params = [p for p in model.parameters() if
-#               id(p) not in base_param_ids]
-# param_groups = [
-#             {'params': base_params, 'lr_mult': 0.1},
-#             {'params': new_params, 'lr_mult': 1.0}]
-
 param_groups = model.parameters()
 learn_rate = args.lr
 optimizer = optim.Adam(param_groups, lr=learn_rate,
@@ -149,7 +139,7 @@ data = DataSet.create(args.data, root=None, test=False)
 train_loader = torch.utils.data.DataLoader(
     data.train, batch_size=args.BatchSize,
     sampler=RandomIdentitySampler(data.train, num_instances=args.num_instances),
-    drop_last=True, num_workers=args.nThreads)
+    drop_last=False, num_workers=args.nThreads)
 
 
 def adjust_learning_rate(opt_, epoch_, num_epochs):
@@ -193,9 +183,9 @@ for epoch in range(args.start, args.epochs):
         if args.loss == 'softmax':
             loss = criterion(embed_feat, labels_var)
             prec1, prec5 = accuracy(embed_feat.data, labels, topk=(1, 5))
-            losses.update(loss.data[0], input.size(0))
-            top1.update(prec1[0], input.size(0))
-            top5.update(prec5[0], input.size(0))
+            losses.update(loss.data[0], inputs.size(0))
+            top1.update(prec1[0], inputs.size(0))
+            top5.update(prec5[0], inputs.size(0))
         else:
             loss, inter_, dist_ap, dist_an = criterion(embed_feat, labels)
             print('[epoch %05d]\t loss: %.7f \t prec: %.3f \t pos-dist: %.3f \tneg-dist: %.3f'
@@ -203,7 +193,7 @@ for epoch in range(args.start, args.epochs):
 
         loss.backward()
         optimizer.step()
-        if i % 10 == 0:
+        if i % args.print_freq == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
@@ -214,9 +204,9 @@ for epoch in range(args.start, args.epochs):
                 data_time=data_time, loss=losses, top1=top1, top5=top5))
     # print(epoch)
 
-    if (epoch + 1) % args.save_step == 0:
-        torch.save(model, os.path.join(log_dir, '%d_model.pkl' % epoch))
+    if epoch % args.save_step == 0:
+        torch.save(model, os.path.join(log_dir, '%d_model.pth' % epoch))
 
-torch.save(model, os.path.join(log_dir, '%d_model.pkl' % epoch))
+torch.save(model, os.path.join(log_dir, '%d_model.pth' % epoch))
 
 print('Finished Training')
