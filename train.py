@@ -42,7 +42,7 @@ parser.add_argument('-epochs', '-epochs', default=100, type=int, metavar='N',
                     help='epochs for training process')
 parser.add_argument('-step', '-s', default=1000, type=int, metavar='N',
                     help='number of epochs to adjust learning rate')
-parser.add_argument('-save_step', default=20, type=int, metavar='N',
+parser.add_argument('-save_step', default=10, type=int, metavar='N',
                     help='number of epochs to save model')
 parser.add_argument('--print-freq', '-p', default=5, type=int,
                     metavar='N', help='print frequency (default: 10)')
@@ -133,8 +133,12 @@ optimizer = optim.Adam(param_groups, lr=learn_rate,
                        weight_decay=args.weight_decay)
 
 #get train_loader
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+if 'mxnet' in args.net:
+    normalize = transforms.Normalize(mean=[123,117,104],
+                                     std=[1,1,1])
+else:
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
 data = DataSet.create(args.data, root=None, test=False)
 train_loader = torch.utils.data.DataLoader(
     data.train, batch_size=args.BatchSize,
@@ -166,6 +170,8 @@ for epoch in range(args.start, args.epochs):
     for i, data in enumerate(train_loader, 0):
         # get the inputs
         inputs, labels = data
+        if 'mxnet' in args.net:
+            inputs = inputs * 255
         # break
         # wrap them in Variable
         # inputs_var = Variable(inputs.cuda())

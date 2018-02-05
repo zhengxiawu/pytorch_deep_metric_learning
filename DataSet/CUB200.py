@@ -13,8 +13,9 @@ class CUB200:
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225]),
+                # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                #                      std=[0.229, 0.224, 0.225]),
+                transforms.Normalize(mean=[123, 117, 104], std=[1, 1, 1])
             ]),
                 transforms.Compose([
                     transforms.Resize(256),

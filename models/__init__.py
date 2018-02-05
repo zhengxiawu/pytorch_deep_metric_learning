@@ -1,11 +1,13 @@
 from .inception import inception_v3
 from .BN_Inception import BNInception
 from .resnet_50 import resnet_50
+from .mxnet_resnet_50 import mxnet_resnet_50
 
 __factory = {
     'bn': BNInception,
     'inception': inception_v3,
     'resnet_50': resnet_50,
+    'mxnet_resnet_50': mxnet_resnet_50
 }
 
 
