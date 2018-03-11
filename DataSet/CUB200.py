@@ -2,20 +2,24 @@ import os
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-
+class scale_255(object):
+    def __call__(self, img):
+        return img*255.
 class CUB200:
     def __init__(self, root, train=True, test=True, transform=None):
         # Data loading code
         if transform is None:
 
             transform = [transforms.Compose([
+                # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                #                      std=[0.229, 0.224, 0.225]),
+                #transforms.Normalize(mean=[123, 117, 104], std=[1, 1, 1]),
                 transforms.Resize(256),
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                #                      std=[0.229, 0.224, 0.225]),
-                transforms.Normalize(mean=[123, 117, 104], std=[1, 1, 1])
+                scale_255(),
+                transforms.Normalize(mean=[123., 117., 104.], std=[1., 1., 1.]),
             ]),
                 transforms.Compose([
                     transforms.Resize(256),

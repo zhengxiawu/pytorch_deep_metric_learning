@@ -5,7 +5,10 @@ import numpy as np
 
 __weights_dict = dict()
 
-pre_trained_path = '/home/zhengxiawu/deep_learning/model/mxnet_2_resnet/mx2pt_resnet_50.npy'
+pre_trained_path = '/home/zhengxiawu/project/pytorch_deep_metric_learning/pretrained_models/kit_pytorch.npy'
+#pre_trained_path = '/home/zhengxiawu/deep_learning/model/mxnet_2_resnet/mx2pt_resnet_50.npy'
+#pre_trained_path = '/home/zhengxiawu/project/pytorch_deep_metric_learning/pretrained_models/resnet_50.npy'
+pre_trained_path = '/home/zhengxiawu/deep_learning/model/mxnet_2_resnet/resnet_50_pytorch.npy'
 
 def load_weights():
     try:
@@ -236,10 +239,14 @@ class mxnet_resnet_50(nn.Module):
         self.bn5c_branch2c = self.__batch_normalization(2, 'bn5c_branch2c', num_features=2048, eps=9.99999974738e-05,
                                                         momentum=0.899999976158)
         self.class_fc = nn.Linear(4096, num_class)
+        nn.init.xavier_uniform(self.class_fc._parameters['weight'],gain=0.624)
+        nn.init.constant(self.class_fc._parameters['weight'],0)
 
     def forward(self, x, **kwargs):
         conv1_pad = F.pad(x, (3L, 3L, 3L, 3L))
         conv1 = self.conv1(conv1_pad)
+        # conv1_numpy = conv1.data.cpu().numpy()
+        # param_numpy = self.conv1._parameters['weight'].data.cpu().numpy()
         bn_conv1 = self.bn_conv1(conv1)
         conv1_relu = F.relu(bn_conv1)
         pool1 = F.max_pool2d(conv1_relu, kernel_size=(3L, 3L), stride=(2L, 2L))
@@ -441,7 +448,8 @@ class mxnet_resnet_50(nn.Module):
         avg_x = F.normalize(flatten1, p=2, dim=1)
         max_x = F.normalize(flatten0, p=2, dim=1)
         x = torch.cat((avg_x, max_x), dim=1)
-        # the last fc layer can be treat as distance compute
+        # the last fc layer can be treat as distanc
+        # ree compute
         x = x * kwargs['scale']
         if kwargs['is_train']:
             x = self.class_fc(x)

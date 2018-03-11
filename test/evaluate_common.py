@@ -50,11 +50,11 @@ def get_feature(model,name_list,test_mod,normalize,size,network_dict):
             else:
                 size = (h,w)
             scaler = transforms.Scale(size=size)
-            img_tensor = to_tensor(img)
+            img_tensor = to_tensor(scaler(img))
             img_tensor = channel_check(img_tensor)
             img_tensor = img_tensor * 255
-            test = normalize(img_tensor)
-            test = test.numpy()
+            # test = normalize(img_tensor)
+            # test = test.numpy()
             t_image = torch.autograd.Variable(normalize(img_tensor).unsqueeze(0)).cuda()
             im_feature = model(t_image, scda=network_dict['scda'],
                                pool_type=network_dict['pool_type'],
@@ -111,7 +111,7 @@ def get_model_by_name_and_path(name,path,mode='pytorch'):
         model.load_state_dict(model_dict)
     else:
         from models import mxnet_resnet_50
-        model = mxnet_resnet_50.mxnet_resnet_50(path,num_class=100)
+        model = mxnet_resnet_50(pretrain=True,num_class=100)
     return model
 
 def recall_at_k_pipe_line(model,test_mode,txt_path,size,normalize,top_k,network_dict):

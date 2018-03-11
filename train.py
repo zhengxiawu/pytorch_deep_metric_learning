@@ -129,8 +129,10 @@ criterion = losses.create(args.loss).cuda()
 
 param_groups = model.parameters()
 learn_rate = args.lr
-optimizer = optim.Adam(param_groups, lr=learn_rate,
-                       weight_decay=args.weight_decay)
+# optimizer = optim.Adam(param_groups, lr=learn_rate,
+#                        weight_decay=args.weight_decay)
+optimizer = optim.SGD(param_groups, lr=learn_rate,
+                      momentum=0.9, weight_decay=0.00005)
 
 #get train_loader
 if 'mxnet' in args.net:
@@ -170,8 +172,9 @@ for epoch in range(args.start, args.epochs):
     for i, data in enumerate(train_loader, 0):
         # get the inputs
         inputs, labels = data
-        if 'mxnet' in args.net:
-            inputs = inputs * 255
+        # if 'mxnet' in args.net:
+        #     inputs = inputs * 255
+        # normalize(inputs)
         # break
         # wrap them in Variable
         # inputs_var = Variable(inputs.cuda())
